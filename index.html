@@ -12,6 +12,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/EXRLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
 <script>
   // ✅ สร้าง Scene
@@ -29,10 +30,17 @@
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
 
-  // 🔑 สำคัญมากสำหรับ EXR/HDR
+  // 🔑 สำหรับ EXR/HDR
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.0;
   renderer.outputEncoding = THREE.sRGBEncoding;
+
+  // ✅ Controls (หมุนดูรอบ ๆ)
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
+  controls.enablePan = true;
+  controls.enableZoom = true;
 
   // ✅ พื้นขนาด 10x10
   const planeGeometry = new THREE.PlaneGeometry(10, 10);
@@ -58,7 +66,7 @@
   dirLight.castShadow = true;
   scene.add(dirLight);
 
-  // ✅ Background (สิ่งแวดล้อม) ใช้ PMREMGenerator
+  // ✅ Background (Environment) ใช้ PMREMGenerator
   const pmremGenerator = new THREE.PMREMGenerator(renderer);
   pmremGenerator.compileEquirectangularShader();
 
@@ -69,8 +77,8 @@
     scene.background = envMap;     // เป็นท้องฟ้า
     scene.environment = envMap;    // ใช้สะท้อนวัตถุ
 
-    texture.dispose();             // เคลียร์
-    pmremGenerator.dispose();      // เคลียร์
+    texture.dispose();
+    pmremGenerator.dispose();
 
     render(); // 🔑 render ครั้งแรกหลังโหลดเสร็จ
   });
@@ -79,6 +87,8 @@
   function render() {
     requestAnimationFrame(render);
     cube.rotation.y += 0.01;
+
+    controls.update(); // ✅ ให้ controls ทำงาน
     renderer.render(scene, camera);
   }
   render();
