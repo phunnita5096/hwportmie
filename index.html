@@ -15,7 +15,6 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/EXRLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-
 <script>
   // ✅ สร้าง Scene
   const scene = new THREE.Scene();
@@ -50,6 +49,11 @@
   dirLight.position.set(20, 50, 20);
   dirLight.castShadow = true;
   scene.add(dirLight);
+  
+  // ✅ ลดความสว่าง
+ambientLight.intensity = 0.2;       // ลด Ambient
+dirLight.intensity = 0.8;          // ลด Directional
+renderer.toneMappingExposure = 0.5; // ลดความสว่างทั้งหมด
 
   // ✅ โหลด Environment (EXR)
   const pmremGenerator = new THREE.PMREMGenerator(renderer);
