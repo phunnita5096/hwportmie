@@ -23,8 +23,8 @@
   const camera = new THREE.PerspectiveCamera(
     60, window.innerWidth / window.innerHeight, 0.1, 2000
   );
-  camera.position.set(5, 4, 8); // 👈 ใกล้มาก เห็นอาณาจักรเต็มตา
-  camera.lookAt(0, 3, 0);
+camera.position.set(8, 12, 10);
+camera.lookAt(0, 6, 0);
 
   // ✅ Renderer
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -42,25 +42,30 @@
   controls.update();
 
   // ✅ แสง
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-  scene.add(ambientLight);
+  // ✅ แสงหลักในฉาก
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); // สว่างทั่ว
+scene.add(ambientLight);
 
-  const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
-  dirLight.position.set(20, 50, 20);
-  dirLight.castShadow = true;
-  scene.add(dirLight);
-  
-  // ✅ ลดความสว่าง
-ambientLight.intensity = 0.2;       // ลด Ambient
-dirLight.intensity = 0.8;          // ลด Directional
-renderer.toneMappingExposure = 0.5; // ลดความสว่างทั้งหมด
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.2); // แสงหลัก
+dirLight.position.set(20, 50, 20);
+dirLight.castShadow = true;
+scene.add(dirLight);
+
+// ✅ เพิ่มแสงฟ้าช่วยให้ดูสมจริง
+const hemiLight = new THREE.HemisphereLight(0x88ccff, 0x444422, 0.6);
+hemiLight.position.set(0, 50, 0);
+scene.add(hemiLight);
+
+// ✅ เพิ่ม exposure ของ renderer
+renderer.toneMappingExposure = 0.4;
+
 
   // ✅ โหลด Environment (EXR)
   const pmremGenerator = new THREE.PMREMGenerator(renderer);
   pmremGenerator.compileEquirectangularShader();
 
   const exrLoader = new THREE.EXRLoader();
-  exrLoader.load("qwantani_night_puresky_1k.exr", (texture) => {
+  exrLoader.load("solitude_night_1k.exr", (texture) => {
     const envMap = pmremGenerator.fromEquirectangular(texture).texture;
     scene.background = envMap;     
     scene.environment = envMap;    
@@ -69,51 +74,33 @@ renderer.toneMappingExposure = 0.5; // ลดความสว่างทั�
   });
 
   // ✅ โหลดโมเดล Mushroom Kingdom (.glb)
-  const gltfLoader = new THREE.GLTFLoader();
-  gltfLoader.load(
-    "mushroom_kingdom_-_super_mario_galaxy-2.glb",
-    (gltf) => {
-      const model = gltf.scene;
-      model.scale.set(1, 1, 1);
-      model.position.set(0, 0, 0);
-      scene.add(model);
-      console.log("✅ Loaded Mushroom Kingdom");
-    },
-    (xhr) => {
-      console.log(Math.round((xhr.loaded / xhr.total) * 100) + "% loaded");
-    },
-    (error) => {
-      console.error("❌ Error loading GLB:", error);
-    }
-  );
-
-// ✅ โหลดโมเดล name.glb เพิ่มเข้าไป (ไฟล์ของคุณ)
+  // ✅ โหลดโมเดล final1.glb เพิ่มเข้าไป (ไฟล์ของคุณ)
 const loader2 = new THREE.GLTFLoader();
 loader2.load(
-  "name.glb",
+  "final1.glb",
   (gltf) => {
     const nameModel = gltf.scene;
 
     // ขนาด / ตำแหน่ง
     nameModel.scale.set(1, 1, 1);
-    nameModel.position.set(-1, 4, 0); // ชิดซ้าย + สูง
+    nameModel.position.set(-1, 4, 0); // ปรับตำแหน่งตามต้องการ
 
     // ตั้งตรง: หมุนแกน X 90° (ถ้าโมเดลนอนราบ)
-    nameModel.rotation.x = Math.PI / 2; // -90° ทำให้โมเดลตั้งขึ้น
-    nameModel.rotation.y = 0;
-    nameModel.rotation.z = 0;
+   nameModel.rotation.x = 0;   // ตั้งตรง
+nameModel.rotation.y = 0;   // หมุนหันขวา 90°
+nameModel.rotation.z = 0;
+
 
     scene.add(nameModel);
-    console.log("✅ Loaded name.glb (ตั้งตรง + ชิดซ้าย + ยกสูง)");
+    console.log("✅ Loaded final1.glb (ตั้งตรง + ชิดซ้าย + ยกสูง)");
   },
   (xhr) => {
-    console.log(Math.round((xhr.loaded / xhr.total) * 100) + "% loaded (name.glb)");
+    console.log(Math.round((xhr.loaded / xhr.total) * 100) + "% loaded (final1.glb)");
   },
   (error) => {
-    console.error("❌ Error loading name.glb:", error);
+    console.error("❌ Error loading final1.glb:", error);
   }
 );
-
 
   // ✅ Render loop
   function render() {
@@ -129,7 +116,178 @@ loader2.load(
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
+  
 </script>
+<script>
+  // ✅ ตัวตรวจจับการคลิก (Raycaster)
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+
+  // ✅ ตัวแปร animation
+  let animating = false;
+  let progres = 0;
+  const startCamPos = camera.position.clone();
+  const startTarget = controls.target.clone();
+  const aboutCamPos = new THREE.Vector3(8, 10, 2); // 👈 ปรับมุมกล้องที่อยากให้ไป
+  const aboutTarget = new THREE.Vector3(0, 5, 0);
+
+  // ✅ ฟังก์ชันจับคลิก
+  window.addEventListener("click", (event) => {
+    pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+    pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(pointer, camera);
+
+    const intersects = raycaster.intersectObjects(scene.children, true);
+    for (let i = 0; i < intersects.length; i++) {
+      const obj = intersects[i].object;
+      if (obj.name === "About me") { // 👈 ตรงกับชื่อใน GLB
+        animating = true;
+        progress = 0;
+        break;
+      }
+    }
+  });
+
+  // ✅ hook เข้ากับ render เดิมโดยไม่แตะของเดิม
+  const oldRender = render;
+  render = function() {
+    if (animating) {
+      progress += 0.02;
+      if (progress >= 1) {
+        progress = 1;
+        animating = false;
+      }
+      // ค่อย ๆ เคลื่อนกล้อง
+      camera.position.lerpVectors(startCamPos, aboutCamPos, progress);
+      const targetNow = new THREE.Vector3().lerpVectors(startTarget, aboutTarget, progress);
+      controls.target.copy(targetNow);
+      camera.lookAt(targetNow);
+    }
+    oldRender(); // render เดิมของคุณ
+  };
+ </script>
+<!-- 💖 Cute Loading Screen -->
+ <div id="loadingScreen" style="
+  position: fixed;
+  inset: 0;
+  background-color: #ffe6f2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  font-family: 'Press Start 2P', cursive;
+  color: #ff69b4;
+  text-align: center;
+">
+  <div style="font-size: 24px; margin-bottom: 20px;">LOADING...</div>
+  <div id="heartBar" style="
+    width: 200px;
+    height: 20px;
+    border: 2px solid #ff69b4;
+    border-radius: 10px;
+    background-color: #ffd6e8;
+    overflow: hidden;
+    position: relative;
+  ">
+    <div id="progress" style="
+      width: 0%;
+      height: 100%;
+      background-color: #ff69b4;
+      border-radius: 10px;
+      transition: width 0.2s;
+    "></div>
+  </div>
+  <div style="margin-top: 10px; font-size: 12px;">💖 Please wait 💖</div>
+</div>
+
+<!-- โหลดฟอนต์พิกเซล -->
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+
+<script>
+ 
+  const loadingScreen = document.getElementById("loadingScreen");
+  const progress = document.getElementById("progress");
+
+  // จำลองการโหลด (คุณสามารถแทนด้วยสถานะโหลด glb จริงได้)
+  let load = 0;
+  const fakeLoading = setInterval(() => {
+    load += 2;
+    progress.style.width = load + "%";
+    if (load >= 100) {
+      clearInterval(fakeLoading);
+      // ให้ fade out สวย ๆ
+      loadingScreen.style.transition = "opacity 1s ease";
+      loadingScreen.style.opacity = 0;
+      setTimeout(() => {
+        loadingScreen.style.display = "none";
+        startCameraZoom(); // เริ่มซูมกล้อง
+      }, 1000);
+    }
+  }, 60);
+
+  // ✅ ฟังก์ชันซูมกล้อง
+  function startCameraZoom() {
+    const startPos = camera.position.clone();
+   const targetPos = new THREE.Vector3(6.2, 8.5, -3.4); 
+    const duration = 2000;
+    const startTime = performance.now();
+
+    function animateCamera(time) {
+      const t = Math.min((time - startTime) / duration, 1);
+      camera.position.lerpVectors(startPos, targetPos, t);
+      camera.lookAt(2, 8, 0);
+      controls.update();
+      if (t < 1) requestAnimationFrame(animateCamera);
+    }
+
+    requestAnimationFrame(animateCamera);
+  }
+</script>
+<script>
+  // ✅ สร้าง Raycaster ใหม่สำหรับสี
+  const colorRaycaster = new THREE.Raycaster();
+  const colorPointer = new THREE.Vector2();
+
+  // ตรวจสอบ click / touch
+  function handleClick(event) {
+    event.preventDefault();
+
+    // รับพิกัด pointer
+    if(event.touches){ // touch event
+      colorPointer.x = (event.touches[0].clientX / window.innerWidth) * 2 - 1;
+      colorPointer.y = -(event.touches[0].clientY / window.innerHeight) * 2 + 1;
+    } else { // mouse click
+      colorPointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+      colorPointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    }
+
+    colorRaycaster.setFromCamera(colorPointer, camera);
+    const intersects = colorRaycaster.intersectObjects(scene.children, true);
+
+    intersects.forEach(i => {
+      if(i.object.name === "About me") {
+        // ✅ เปลี่ยนสีเป็นขาว
+        if(i.object.material) {
+          i.object.material.color.set(0xffffff);
+        } else if(i.object.children.length > 0){
+          i.object.traverse(child => {
+            if(child.material) child.material.color.set(0xffffff);
+          });
+        }
+
+        // ✅ เริ่ม animate กล้องไปมุมใหม่
+        animating = true;
+        progres = 0;
+      }
+    });
+  }
+
+  window.addEventListener("click", handleClick);
+  window.addEventListener("touchstart", handleClick);
+</script>
+
+
 
 </body>
 </html>
