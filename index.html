@@ -1,293 +1,253 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th">
 <head>
   <meta charset="utf-8" />
-  <title>Mushroom Kingdom 3D</title>
+  <title>Medieval Book • three.js</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- ✅ โหลด Three.js และเครื่องมือเสริม -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/RGBELoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/EXRLoader.js"></script>
+
+  <!-- ฟอนต์น่ารัก -->
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+
   <style>
-    body { margin: 0; overflow: hidden; }
-    canvas { display: block; }
-  </style>
-</head>
-<body>
-
-<!-- ✅ โหลด Three.js + Loader -->
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/EXRLoader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-<script>
-  // ✅ สร้าง Scene
-  const scene = new THREE.Scene();
-
-  // ✅ กล้อง (ใกล้อาณาจักร)
-  const camera = new THREE.PerspectiveCamera(
-    60, window.innerWidth / window.innerHeight, 0.1, 2000
-  );
-camera.position.set(8, 12, 10);
-camera.lookAt(0, 6, 0);
-
-  // ✅ Renderer
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.0;
-  renderer.outputEncoding = THREE.sRGBEncoding;
-  document.body.appendChild(renderer.domElement);
-
-  // ✅ Controls
-  const controls = new THREE.OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.05;
-  controls.target.set(0, 3, 0);
-  controls.update();
-
-  // ✅ แสง
-  // ✅ แสงหลักในฉาก
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); // สว่างทั่ว
-scene.add(ambientLight);
-
-const dirLight = new THREE.DirectionalLight(0xffffff, 1.2); // แสงหลัก
-dirLight.position.set(20, 50, 20);
-dirLight.castShadow = true;
-scene.add(dirLight);
-
-// ✅ เพิ่มแสงฟ้าช่วยให้ดูสมจริง
-const hemiLight = new THREE.HemisphereLight(0x88ccff, 0x444422, 0.6);
-hemiLight.position.set(0, 50, 0);
-scene.add(hemiLight);
-
-// ✅ เพิ่ม exposure ของ renderer
-renderer.toneMappingExposure = 0.4;
-
-
-  // ✅ โหลด Environment (EXR)
-  const pmremGenerator = new THREE.PMREMGenerator(renderer);
-  pmremGenerator.compileEquirectangularShader();
-
-  const exrLoader = new THREE.EXRLoader();
-  exrLoader.load("solitude_night_1k.exr", (texture) => {
-    const envMap = pmremGenerator.fromEquirectangular(texture).texture;
-    scene.background = envMap;     
-    scene.environment = envMap;    
-    texture.dispose();
-    pmremGenerator.dispose();
-  });
-
-  // ✅ โหลดโมเดล Mushroom Kingdom (.glb)
-  // ✅ โหลดโมเดล final1.glb เพิ่มเข้าไป (ไฟล์ของคุณ)
-const loader2 = new THREE.GLTFLoader();
-loader2.load(
-  "final1.glb",
-  (gltf) => {
-    const nameModel = gltf.scene;
-
-    // ขนาด / ตำแหน่ง
-    nameModel.scale.set(1, 1, 1);
-    nameModel.position.set(-1, 4, 0); // ปรับตำแหน่งตามต้องการ
-
-    // ตั้งตรง: หมุนแกน X 90° (ถ้าโมเดลนอนราบ)
-   nameModel.rotation.x = 0;   // ตั้งตรง
-nameModel.rotation.y = 0;   // หมุนหันขวา 90°
-nameModel.rotation.z = 0;
-
-
-    scene.add(nameModel);
-    console.log("✅ Loaded final1.glb (ตั้งตรง + ชิดซ้าย + ยกสูง)");
-  },
-  (xhr) => {
-    console.log(Math.round((xhr.loaded / xhr.total) * 100) + "% loaded (final1.glb)");
-  },
-  (error) => {
-    console.error("❌ Error loading final1.glb:", error);
-  }
-);
-
-  // ✅ Render loop
-  function render() {
-    requestAnimationFrame(render);
-    controls.update();
-    renderer.render(scene, camera);
-  }
-  render();
-
-  // ✅ Resize
-  window.addEventListener("resize", () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  });
-  
-</script>
-<script>
-  // ✅ ตัวตรวจจับการคลิก (Raycaster)
-  const raycaster = new THREE.Raycaster();
-  const pointer = new THREE.Vector2();
-
-  // ✅ ตัวแปร animation
-  let animating = false;
-  let progres = 0;
-  const startCamPos = camera.position.clone();
-  const startTarget = controls.target.clone();
-  const aboutCamPos = new THREE.Vector3(8, 10, 2); // 👈 ปรับมุมกล้องที่อยากให้ไป
-  const aboutTarget = new THREE.Vector3(0, 5, 0);
-
-  // ✅ ฟังก์ชันจับคลิก
-  window.addEventListener("click", (event) => {
-    pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
-    pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
-    raycaster.setFromCamera(pointer, camera);
-
-    const intersects = raycaster.intersectObjects(scene.children, true);
-    for (let i = 0; i < intersects.length; i++) {
-      const obj = intersects[i].object;
-      if (obj.name === "About me") { // 👈 ตรงกับชื่อใน GLB
-        animating = true;
-        progress = 0;
-        break;
-      }
+    html,body{height:100%;margin:0;overflow:hidden;}
+    canvas{display:block;}
+    #loadingScreen {
+      position: fixed;
+      inset: 0;
+      background-color: #ffe6f2;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      font-family: 'Press Start 2P', cursive;
+      color: #ff69b4;
+      text-align: center;
+      opacity: 1;
+      transition: opacity 9s ease;
     }
-  });
-
-  // ✅ hook เข้ากับ render เดิมโดยไม่แตะของเดิม
-  const oldRender = render;
-  render = function() {
-    if (animating) {
-      progress += 0.02;
-      if (progress >= 1) {
-        progress = 1;
-        animating = false;
-      }
-      // ค่อย ๆ เคลื่อนกล้อง
-      camera.position.lerpVectors(startCamPos, aboutCamPos, progress);
-      const targetNow = new THREE.Vector3().lerpVectors(startTarget, aboutTarget, progress);
-      controls.target.copy(targetNow);
-      camera.lookAt(targetNow);
+    #heartBar {
+      width: 200px; height: 20px;
+      border: 2px solid #ff69b4;
+      border-radius: 10px;
+      background-color: #ffd6e8;
+      overflow: hidden;
     }
-    oldRender(); // render เดิมของคุณ
-  };
- </script>
-<!-- 💖 Cute Loading Screen -->
- <div id="loadingScreen" style="
-  position: fixed;
-  inset: 0;
-  background-color: #ffe6f2;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  z-index: 9999;
-  font-family: 'Press Start 2P', cursive;
-  color: #ff69b4;
-  text-align: center;
-">
-  <div style="font-size: 24px; margin-bottom: 20px;">LOADING...</div>
-  <div id="heartBar" style="
-    width: 200px;
-    height: 20px;
-    border: 2px solid #ff69b4;
-    border-radius: 10px;
-    background-color: #ffd6e8;
-    overflow: hidden;
-    position: relative;
-  ">
-    <div id="progress" style="
+    #progress {
       width: 0%;
       height: 100%;
       background-color: #ff69b4;
       border-radius: 10px;
-      transition: width 0.2s;
-    "></div>
+      transition: width 10s ease;
+    }
+  </style>
+</head>
+<body>
+  <!-- 💖 Cute Loading Screen -->
+  <div id="loadingScreen">
+    <div style="font-size: 24px; margin-bottom: 20px;">LOADING...</div>
+    <div id="heartBar"><div id="progress"></div></div>
+    <div style="margin-top: 10px; font-size: 12px;">💖 Please wait 💖</div>
   </div>
-  <div style="margin-top: 10px; font-size: 12px;">💖 Please wait 💖</div>
-</div>
 
-<!-- โหลดฟอนต์พิกเซล -->
-<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <script>
+  // 🌸 สร้าง scene หลัก
+  const scene = new THREE.Scene();
 
-<script>
- 
-  const loadingScreen = document.getElementById("loadingScreen");
-  const progress = document.getElementById("progress");
+  // ✅ โหลด EXR environment background
+  const exrLoader = new THREE.EXRLoader();
+  exrLoader.load('industrial_sunset_02_puresky_1k.exr', (texture) => {
+    texture.mapping = THREE.EquirectangularReflectionMapping;
+    texture.colorSpace = THREE.SRGBColorSpace;
+    scene.background = texture;
+    scene.environment = texture;
+  });
 
-  // จำลองการโหลด (คุณสามารถแทนด้วยสถานะโหลด glb จริงได้)
-  let load = 0;
-  const fakeLoading = setInterval(() => {
-    load += 2;
-    progress.style.width = load + "%";
-    if (load >= 100) {
-      clearInterval(fakeLoading);
-      // ให้ fade out สวย ๆ
-      loadingScreen.style.transition = "opacity 1s ease";
-      loadingScreen.style.opacity = 0;
-      setTimeout(() => {
-        loadingScreen.style.display = "none";
-        startCameraZoom(); // เริ่มซูมกล้อง
-      }, 1000);
-    }
-  }, 60);
+  // 📸 กล้อง
+  const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 200);
+  camera.position.set(-25, 25, 35);  // มุมเฉียงซ้ายบน
+  camera.lookAt(10, 6, 0);
 
-  // ✅ ฟังก์ชันซูมกล้อง
-  function startCameraZoom() {
-    const startPos = camera.position.clone();
-   const targetPos = new THREE.Vector3(6.2, 8.5, -3.4); 
-    const duration = 2000;
-    const startTime = performance.now();
+  // 🪄 Renderer
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.shadowMap.enabled = true;
+  document.body.appendChild(renderer.domElement);
 
-    function animateCamera(time) {
-      const t = Math.min((time - startTime) / duration, 1);
-      camera.position.lerpVectors(startPos, targetPos, t);
-      camera.lookAt(2, 8, 0);
-      controls.update();
-      if (t < 1) requestAnimationFrame(animateCamera);
-    }
+  // 🎮 Controls
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enabled = false; // ปิดชั่วคราวระหว่าง intro
+  controls.target.set(10, 8, 0);
+  controls.update();
 
-    requestAnimationFrame(animateCamera);
-  }
-</script>
-<script>
-  // ✅ สร้าง Raycaster ใหม่สำหรับสี
-  const colorRaycaster = new THREE.Raycaster();
-  const colorPointer = new THREE.Vector2();
+  // 💡 แสง
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x333333, 0.6);
+  scene.add(hemi);
 
-  // ตรวจสอบ click / touch
-  function handleClick(event) {
-    event.preventDefault();
+  const dir = new THREE.DirectionalLight(0xffffff, 1.0);
+  dir.position.set(3, 5, 2);
+  dir.castShadow = true;
+  scene.add(dir);
 
-    // รับพิกัด pointer
-    if(event.touches){ // touch event
-      colorPointer.x = (event.touches[0].clientX / window.innerWidth) * 2 - 1;
-      colorPointer.y = -(event.touches[0].clientY / window.innerHeight) * 2 + 1;
-    } else { // mouse click
-      colorPointer.x = (event.clientX / window.innerWidth) * 2 - 1;
-      colorPointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
-    }
+  // 💖 Loading Manager
+  const manager = new THREE.LoadingManager();
+  manager.onProgress = (url, loaded, total) => {
+    const percent = Math.round((loaded / total) * 100);
+    document.getElementById("progress").style.width = percent + "%";
+  };
+  manager.onLoad = () => {
+    const loadingScreen = document.getElementById("loadingScreen");
+    setTimeout(() => {
+      loadingScreen.style.opacity = "0";
+      setTimeout(() => loadingScreen.remove(), 3000);
+      startIntroCameraMove();
+    }, 1000);
+  };
 
-    colorRaycaster.setFromCamera(colorPointer, camera);
-    const intersects = colorRaycaster.intersectObjects(scene.children, true);
+  // 📦 โหลดโมเดล GLTF
+  const loader = new THREE.GLTFLoader(manager);
+  const clock = new THREE.Clock();
+  let mixer = null;
 
-    intersects.forEach(i => {
-      if(i.object.name === "About me") {
-        // ✅ เปลี่ยนสีเป็นขาว
-        if(i.object.material) {
-          i.object.material.color.set(0xffffff);
-        } else if(i.object.children.length > 0){
-          i.object.traverse(child => {
-            if(child.material) child.material.color.set(0xffffff);
-          });
+  loader.load(
+    'scene.gltf',
+    (gltf) => {
+      const model = gltf.scene;
+      model.traverse((node) => {
+        if (node.isMesh) {
+          node.castShadow = true;
+          node.receiveShadow = true;
         }
-
-        // ✅ เริ่ม animate กล้องไปมุมใหม่
-        animating = true;
-        progres = 0;
+      });
+      if (gltf.animations.length) {
+        mixer = new THREE.AnimationMixer(model);
+        gltf.animations.forEach((clip) => mixer.clipAction(clip).play());
       }
-    });
+      model.position.set(0, 0, 0);
+      scene.add(model);
+    },
+    undefined,
+    (error) => console.error('❌ Error loading glTF:', error)
+  );
+
+  // 🎥 กล้องเคลื่อนซูมเข้า
+  let camStart = new THREE.Vector3(-35, 30, 50);
+  let camEnd = new THREE.Vector3(-25, 25, 35);
+  let introProgress = 0;
+  let introActive = false;
+
+  function startIntroCameraMove() {
+    introProgress = 0;
+    introActive = true;
   }
 
-  window.addEventListener("click", handleClick);
-  window.addEventListener("touchstart", handleClick);
+  window.addEventListener('resize', () => {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+
+  function animate() {
+    requestAnimationFrame(animate);
+    const delta = clock.getDelta();
+    if (mixer) mixer.update(delta);
+
+    if (introActive) {
+      introProgress += delta * 0.4;
+      if (introProgress >= 1) {
+        introProgress = 1;
+        introActive = false;
+        controls.enabled = true;
+      }
+      camera.position.lerpVectors(camStart, camEnd, introProgress);
+      camera.lookAt(10, 8, 0);
+    }
+
+    renderer.render(scene, camera);
+  }
+  animate();
+  </script>
+  <script>
+/* 🎯 เพิ่มระบบเลือกวัตถุ + เปลี่ยนสี + กล้องเคลื่อน */
+
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let selectedObject = null;
+
+// 📍 จุดกล้องเป้าหมายแต่ละปุ่ม (ใส่ตำแหน่งจริงตามฉากคุณ)
+const cameraTargets = {
+  "About me": new THREE.Vector3(5, 10, 15),
+  "Project": new THREE.Vector3(-5, 12, 20),
+  "Credit": new THREE.Vector3(0, 8, 25)
+};
+
+// 🎨 ฟังก์ชันเปลี่ยนสี
+function setHighlight(obj, highlight) {
+  if (!obj.material) return;
+  if (highlight) {
+    obj.material.color.set(0xffe699); // สีเหลืองพาสเทล
+  } else {
+    obj.material.color.set(0xffffff); // สีเดิม (ขาว)
+  }
+}
+
+// 🎯 ตรวจจับเมาส์ชี้
+window.addEventListener('mousemove', (event) => {
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+  raycaster.setFromCamera(mouse, camera);
+
+  const intersects = raycaster.intersectObjects(scene.children, true);
+  if (intersects.length > 0) {
+    const obj = intersects[0].object;
+
+    if (selectedObject !== obj) {
+      if (selectedObject) setHighlight(selectedObject, false);
+      selectedObject = obj;
+      setHighlight(selectedObject, true);
+    }
+  } else {
+    if (selectedObject) setHighlight(selectedObject, false);
+    selectedObject = null;
+  }
+});
+
+// 👆 คลิกแล้วกล้องเคลื่อน
+window.addEventListener('click', () => {
+  if (!selectedObject || !selectedObject.name) return;
+
+  const name = selectedObject.name.toLowerCase();
+  for (let key in cameraTargets) {
+    if (name.includes(key.toLowerCase())) {
+      moveCameraTo(cameraTargets[key]);
+    }
+  }
+});
+
+// 🎥 ฟังก์ชันเคลื่อนกล้อง
+function moveCameraTo(targetPos) {
+  const startPos = camera.position.clone();
+  const endPos = targetPos.clone();
+  let progress = 0;
+
+  const move = () => {
+    progress += 0.02;
+    camera.position.lerpVectors(startPos, endPos, progress);
+    camera.lookAt(0, 5, 0);
+    if (progress < 1) requestAnimationFrame(move);
+  };
+  move();
+}
 </script>
-
-
 
 </body>
 </html>
