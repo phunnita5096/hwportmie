@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <title>Medieval Book • three.js</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/RGBELoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/EXRLoader.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+
+  <style>
+    html,body{height:100%;margin:0;overflow:hidden;}
+    canvas{display:block;}
+    #loadingScreen {
+      position: fixed;
+      inset: 0;
+      background-color: #ffe6f2;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      font-family: 'Press Start 2P', cursive;
+      color: #ff69b4;
+      text-align: center;
+      opacity: 1;
+      transition: opacity 10s ease;
+    }
+    #heartBar {
+      width: 200px; height: 20px;
+      border: 2px solid #ff69b4;
+      border-radius: 10px;
+      background-color: #ffd6e8;
+      overflow: hidden;
+    }
+    #progress {
+      width: 0%;
+      height: 100%;
+      background-color: #ff69b4;
+      border-radius: 10px;
+      transition: width 3s ease;
+    }
+  </style>
+</head>
+<body>
+  <div id="loadingScreen">
+    <div style="font-size: 24px; margin-bottom: 20px;">Portfolio Phunnita Kumpapan LOADING...</div>
+    <div id="heartBar"><div id="progress"></div></div>
+    <div style="margin-top: 10px; font-size: 12px;">💖 Please wait 💖</div>
+  </div>
+
+  <script>
+    // ✅ Scene & Camera
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 1000);
+    camera.position.set(25, 28, 45);
+
+    // ✅ Renderer
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.shadowMap.enabled = true;
+    document.body.appendChild(renderer.domElement);
+
+    // ✅ Controls
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.target.set(5, 8, 0);
+    controls.update();
+
+    // ✅ สร้างตัวแปรไว้เก็บมุม default (ยังไม่ตั้งค่าจริงจนกว่า smoothMove จบ)
+    const defaultCameraPos = new THREE.Vector3();
+    const defaultTarget = new THREE.Vector3();
+
+    // ✅ Lights
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x333333, 0.6);
+    scene.add(hemi);
+    const dir = new THREE.DirectionalLight(0xffffff, 1);
+    dir.position.set(3, 5, 2);
+    dir.castShadow = true;
+    scene.add(dir);
+
+    // ✅ Loading Manager
+    const manager = new THREE.LoadingManager(
+      () => {
+        const loadingScreen = document.getElementById("loadingScreen");
+        setTimeout(() => {
+          loadingScreen.style.opacity = "0";
+          setTimeout(() => loadingScreen.remove(), 2500);
+        }, 1000);
+
+        // ✅ Smooth camera move (intro)
+        const start = { x: 50, y: 50, z: 100 };
+        const end   = { x: 25, y: 30, z: 50 };
+        const duration = 4000;
+        const startTime = performance.now();
+
+        function smoothMove(time) {
+          const t = Math.min((time - startTime) / duration, 1);
+          const ease = t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t;
+          camera.position.x = start.x + (end.x - start.x) * ease;
+          camera.position.y = start.y + (end.y - start.y) * ease;
+          camera.position.z = start.z + (end.z - start.z) * ease;
+          camera.lookAt(5, 3, 0);
+          controls.target.set(-8, 4, 0);
+          controls.update();
+
+          if (t < 1) {
+            requestAnimationFrame(smoothMove);
+          } else {
+            // ✅ เก็บมุมกล้องสุดท้ายไว้เป็น default จริง
+            defaultCameraPos.copy(camera.position);
+            defaultTarget.copy(controls.target);
+          }
+        }
+        requestAnimationFrame(smoothMove);
+      },
+      (url, loaded, total) => {
+        const percent = Math.round((loaded / total) * 100);
+        document.getElementById("progress").style.width = percent + "%";
+      }
+    );
+
+    // ✅ Load EXR Background
+    const exrLoader = new THREE.EXRLoader(manager);
+    exrLoader.load('industrial_sunset_02_puresky_1k.exr', (texture) => {
+      texture.mapping = THREE.EquirectangularReflectionMapping;
+      texture.colorSpace = THREE.SRGBColorSpace;
+      scene.background = texture;
+      scene.environment = texture;
+    });
+
+    // ✅ Load GLTF Model
+    const loader = new THREE.GLTFLoader(manager);
+    let mixer = null;
+    const clock = new THREE.Clock();
+    loader.load(
+      'scene.gltf',
+      (gltf) => {
+        const model = gltf.scene;
+        model.traverse((node) => {
+          if (node.isMesh) {
+            node.castShadow = true;
+            node.receiveShadow = true;
+          }
+        });
+        if (gltf.animations.length) {
+          mixer = new THREE.AnimationMixer(model);
+          gltf.animations.forEach((clip) => mixer.clipAction(clip).play());
+        }
+        scene.add(model);
+      },
+      undefined,
+      (error) => console.error('❌ Error loading GLTF:', error)
+    );
+
+    // ✅ Resize
+    window.addEventListener('resize', () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
+
+    // ✅ Animate Loop
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+      if (mixer) mixer.update(delta);
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // ✅ ฟังก์ชันให้กล้องกลับมุมเดิม
+    (function(){
+      let isReturning = false;
+
+      function returnCameraToDefault(duration = 3000) {
+        if (isReturning) return;
+        isReturning = true;
+
+        const startTime = performance.now();
+        const startPos = camera.position.clone();
+        const startTarget = controls.target.clone();
+
+        function animateReturn(time) {
+          const elapsed = time - startTime;
+          const t = Math.min(elapsed / duration, 1);
+          const ease = t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t;
+
+          const newPos = startPos.clone().lerp(defaultCameraPos, ease);
+          const newTgt = startTarget.clone().lerp(defaultTarget, ease);
+
+          camera.position.copy(newPos);
+          controls.target.copy(newTgt);
+          controls.update();
+
+          if (t < 1) {
+            requestAnimationFrame(animateReturn);
+          } else {
+            camera.position.copy(defaultCameraPos);
+            controls.target.copy(defaultTarget);
+            controls.update();
+            isReturning = false;
+          }
+        }
+
+        requestAnimationFrame(animateReturn);
+      }
+
+      // ✅ คลิกที่ใดก็ได้เพื่อกลับมุมเดิม
+      window.addEventListener('click', () => {
+        returnCameraToDefault(4000);
+      });
+    })();
+  </script>
+
+</body>
+</html>
